@@ -41,7 +41,7 @@ public rgPlayerBlind(id, inflictor, attacker, Float:fadeTime, Float:fadeHold, al
 	if (alpha != 255 || fadeHold < 1.0)
 		return HC_CONTINUE;
 	
-	for(new i = 1; i <= MaxClients; i++) {
+	for(new i = 0; i <= MaxClients; i++) {
 		if (!is_user_connected(i))
 			continue;
 		
