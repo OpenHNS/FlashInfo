@@ -1,5 +1,5 @@
-# FlashInfo
-Flash Info for Hide'n'Seek Counter-Strike 1.6 
+# Flash Notifier
+Flash Notifier for Hide'n'Seek Counter-Strike 1.6 
 
 ## Требования / Requirements
 - [ReHLDS](https://dev-cs.ru/resources/64/)
@@ -7,7 +7,11 @@ Flash Info for Hide'n'Seek Counter-Strike 1.6
 - [Reapi (last)](https://dev-cs.ru/resources/73/updates)
 - [ReGameDLL (last)](https://dev-cs.ru/resources/67/updates)
 
-## Установка
+## Функции / Functions
+
+-  #define GRAY_FLASHED - Эффект серого ослепления / Gray dazzle effect
+
+## Установка / Installation
  
 1. Скомпилируйте плагин.
 
