@@ -5,32 +5,20 @@
 
 #define rg_get_user_team(%0) get_member(%0, m_iTeam)
 
-new Float:g_flFlashUntil[MAX_PLAYERS + 1];
-new Float:g_flFlashHoldTime[MAX_PLAYERS + 1];
+enum _:flash_type { FLASHED = 0, FULLFLASHED }
 
-new Float:g_flHudTime[MAX_PLAYERS + 1];
+new g_szFlashType[flash_type][] = { "Flashed", "Full flashed" };
 
 public plugin_init() {
-	register_plugin("HNS Flash Notifier", "1.0.4", "OpenHNS"); // Juice, WessTorn
+	register_plugin("HNS Flash Notifier", "1.0.5", "OpenHNS"); // Juice, WessTorn
 	
 	RegisterHookChain(RG_PlayerBlind, "rgPlayerBlind");
 	RegisterHookChain(RG_CBasePlayer_PreThink, "rgPlayerPreThink");
 }
 
-public client_putinserver(id) {
-	g_flFlashUntil[id] = g_flFlashHoldTime[id] = 0.0;
-}
-
-public client_disconnected(id) {
-	g_flFlashUntil[id] = g_flFlashHoldTime[id] = 0.0;
-}
-
 public rgPlayerBlind(id, inflictor, attacker, Float:fadeTime, Float:fadeHold, alpha, Float:color[3]) {
-	if(!is_entity(attacker) || rg_get_user_team(id) != TEAM_CT || rg_get_user_team(attacker) != TEAM_TERRORIST)
+	if(!is_entity(attacker) || rg_get_user_team(id) != TEAM_CT || rg_get_user_team(attacker) != TEAM_TERRORIST || rg_get_user_team(id) == TEAM_SPECTATOR)
 		return HC_SUPERCEDE;
-
-	g_flFlashUntil[id] = get_gametime() + fadeTime;
-	g_flFlashHoldTime[id] = get_gametime() + fadeHold;
 
 	#if defined GRAY_FLASHED
 		color[0] = 150.0;
@@ -59,12 +47,12 @@ public rgPlayerPreThink(id) {
 	if(rg_get_user_team(id) != TEAM_SPECTATOR) 
 		return HC_CONTINUE;
 
-	new iSpecMode = get_entvar(id, var_iuser1);
+	new iSpecMode = get_member(id, m_iObserverLastMode);
 
-	if(iSpecMode != 2 && iSpecMode != 4)
+	if(iSpecMode != OBS_CHASE_FREE && iSpecMode != OBS_IN_EYE)
 		return HC_CONTINUE;
 
-	new iTarget = get_entvar(id, var_iuser2);
+	new iTarget = get_member(id, m_hObserverTarget);
 
 	if(iTarget == id)
 		return HC_CONTINUE;
@@ -72,31 +60,29 @@ public rgPlayerPreThink(id) {
 	if(!is_user_alive(iTarget))
 		return HC_CONTINUE;
 
+	if(!IsBlind(iTarget))
+		return HC_CONTINUE;
+
 	new Float:g_flGameTime = get_gametime();
+	static Float:flHudTime;
 
-	if(g_flFlashUntil[iTarget] <= g_flGameTime)
+	if(flHudTime + 0.1 > g_flGameTime)
 		return HC_CONTINUE;
 
+	new iFlashType;
 
-	if((g_flHudTime[id] + 0.1) > g_flGameTime)
-		return HC_CONTINUE;
-
-	new bool:IsFullFlash = g_flFlashHoldTime[iTarget] > g_flGameTime ? true : false;
-
-	static szFlashInfo[16];
-
-	if (IsFullFlash) {
+	if (IsBlindFull(iTarget)) {
 		set_dhudmessage(250, 0, 0, -1.0, 0.2, 0, 1.0, 0.2, 0.0, 0.0);
-		formatex(szFlashInfo, charsmax(szFlashInfo), "Full flashed");
+		iFlashType = FULLFLASHED;
 	} else {
 		set_dhudmessage(0, 250, 0, -1.0, 0.2, 0, 1.0, 0.2, 0.0, 0.0);
-		formatex(szFlashInfo, charsmax(szFlashInfo), "Flashed");
+		iFlashType = FLASHED;
 	}
 
 	ScreenFade(id);
-	show_dhudmessage(id, "%s", szFlashInfo);
+	show_dhudmessage(id, "%s", g_szFlashType[iFlashType]);
 
-	g_flHudTime[id] = g_flGameTime;
+	flHudTime = g_flGameTime;
 
 	return HC_CONTINUE;
 }
@@ -117,4 +103,12 @@ public ScreenFade(id){
 }
 
 public UTIL_FixedUnsigned16(Float:Value, Scale)
-    return clamp(floatround(Value * Scale), 0, 0xFFFF);
+	return clamp(floatround(Value * Scale), 0, 0xFFFF);
+
+stock bool:IsBlind(pPlayer) {
+	return bool:(Float:get_member(pPlayer, m_blindStartTime) + Float:get_member(pPlayer, m_blindFadeTime) >= get_gametime());
+}
+
+stock bool:IsBlindFull(pPlayer) {
+	return bool:(Float:get_member(pPlayer, m_blindStartTime) + Float:get_member(pPlayer, m_blindHoldTime) >= get_gametime());
+}
