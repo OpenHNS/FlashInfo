@@ -9,15 +9,24 @@ enum _:flash_type { FLASHED = 0, FULLFLASHED }
 
 new g_szFlashType[flash_type][] = { "Flashed", "Full flashed" };
 
+new bool:g_isSpecFlashed[MAX_PLAYERS + 1];
+
 public plugin_init() {
-	register_plugin("HNS Flash Notifier", "1.0.5", "OpenHNS"); // Juice, WessTorn
+	register_plugin("HNS Flash Notifier", "1.0.6", "OpenHNS"); // Juice, WessTorn
 	
+	RegisterHookChain(RG_CBasePlayer_Observer_IsValidTarget, "ObserverTarget", true);
 	RegisterHookChain(RG_PlayerBlind, "rgPlayerBlind");
 	RegisterHookChain(RG_CBasePlayer_PreThink, "rgPlayerPreThink");
 }
 
+public ObserverTarget(id){
+	if (!g_isSpecFlashed[id]) {
+		g_isSpecFlashed[id] = true;
+	}
+}   
+
 public rgPlayerBlind(id, inflictor, attacker, Float:fadeTime, Float:fadeHold, alpha, Float:color[3]) {
-	if(!is_entity(attacker) || rg_get_user_team(id) != TEAM_CT || rg_get_user_team(attacker) != TEAM_TERRORIST || rg_get_user_team(id) == TEAM_SPECTATOR)
+	if(rg_get_user_team(id) != TEAM_CT || rg_get_user_team(attacker) != TEAM_TERRORIST)
 		return HC_SUPERCEDE;
 
 	#if defined GRAY_FLASHED
@@ -39,6 +48,8 @@ public rgPlayerBlind(id, inflictor, attacker, Float:fadeTime, Float:fadeHold, al
 			client_print_color(i, print_team_grey, "^3%n^1 flashed ^3%n^1 for ^3%.2f^1 second", attacker, id, fadeHold);
 		}
 	}
+
+	arrayset(g_isSpecFlashed, true, charsmax(g_isSpecFlashed)); 
 
 	return HC_CONTINUE;
 }
@@ -79,7 +90,11 @@ public rgPlayerPreThink(id) {
 		iFlashType = FLASHED;
 	}
 
-	ScreenFade(id);
+	if (g_isSpecFlashed[id]) {
+		ScreenFade(id);
+		g_isSpecFlashed[id] = false;
+	}
+
 	show_dhudmessage(id, "%s", g_szFlashType[iFlashType]);
 
 	flHudTime = g_flGameTime;
