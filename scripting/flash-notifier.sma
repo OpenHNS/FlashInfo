@@ -1,39 +1,35 @@
 #include <amxmodx>
 #include <reapi>
 
-#define GRAY_FLASHED // Эффект серого ослепления | Gray dazzle effect
-
 #define rg_get_user_team(%0) get_member(%0, m_iTeam)
 
 enum _:flash_type { FLASHED = 0, FULLFLASHED }
 
 new g_szFlashType[flash_type][] = { "Flashed", "Full flashed" };
 
-new bool:g_isSpecFlashed[MAX_PLAYERS + 1];
+new g_iCvarFlashSpec;
+
+new bool:g_isSpecFlashed[MAX_PLAYERS + 1]; // Костыль для костыля
 
 public plugin_init() {
-	register_plugin("HNS Flash Notifier", "1.0.6", "OpenHNS"); // Juice, WessTorn
+	register_plugin("HNS Flash Notifier", "1.1.0", "OpenHNS"); // Juice, WessTorn, ufame
+
+	bind_pcvar_num(register_cvar("flash_spec", "1"), g_iCvarFlashSpec);
 	
-	RegisterHookChain(RG_CBasePlayer_Observer_IsValidTarget, "ObserverTarget", true);
+	RegisterHookChain(RG_GetForceCamera, "rgGetForceCamera", true);
 	RegisterHookChain(RG_PlayerBlind, "rgPlayerBlind");
 	RegisterHookChain(RG_CBasePlayer_PreThink, "rgPlayerPreThink");
 }
 
-public ObserverTarget(id){
+public rgGetForceCamera(id){
 	if (!g_isSpecFlashed[id]) {
 		g_isSpecFlashed[id] = true;
 	}
 }   
 
 public rgPlayerBlind(id, inflictor, attacker, Float:fadeTime, Float:fadeHold, alpha, Float:color[3]) {
-	if(rg_get_user_team(id) != TEAM_CT || rg_get_user_team(attacker) != TEAM_TERRORIST)
-		return HC_SUPERCEDE;
-
-	#if defined GRAY_FLASHED
-		color[0] = 150.0;
-		color[1] = 150.0;
-		color[2] = 150.0;
-	#endif
+	if(rg_get_user_team(id) != TEAM_CT || rg_get_user_team(attacker) != TEAM_TERRORIST || id == attacker)
+		return HC_CONTINUE;
 
 	if (alpha != 255 || fadeHold < 1.0)
 		return HC_CONTINUE;
@@ -49,13 +45,14 @@ public rgPlayerBlind(id, inflictor, attacker, Float:fadeTime, Float:fadeHold, al
 		}
 	}
 
-	arrayset(g_isSpecFlashed, true, charsmax(g_isSpecFlashed)); 
+	if (g_iCvarFlashSpec)
+		arrayset(g_isSpecFlashed, true, charsmax(g_isSpecFlashed)); 
 
 	return HC_CONTINUE;
 }
 
 public rgPlayerPreThink(id) {
-	if(rg_get_user_team(id) != TEAM_SPECTATOR) 
+	if(!g_iCvarFlashSpec || rg_get_user_team(id) != TEAM_SPECTATOR) 
 		return HC_CONTINUE;
 
 	new iSpecMode = get_member(id, m_iObserverLastMode);
@@ -91,7 +88,7 @@ public rgPlayerPreThink(id) {
 	}
 
 	if (g_isSpecFlashed[id]) {
-		ScreenFade(id);
+		ScreenFade(id); // Костыль
 		g_isSpecFlashed[id] = false;
 	}
 
